@@ -9,6 +9,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const dotenv = require("dotenv");
+dotenv.config();
 const child_process_1 = require("child_process");
 const fs_1 = require("fs");
 const aws_sdk_1 = require("aws-sdk");
@@ -24,9 +26,10 @@ aws_sdk_1.config.update({
 const s3 = new aws_sdk_1.S3();
 function pgBackup() {
     function doBackup() {
-        const command = `pg_dump --data-only --no-acl ${process.env.DATABASE_URL} > backup.sql`;
+        const command = `pg_dump --data-only --no-acl ${process.env.DATABASE_URL} > test_backup.sql`;
         (0, child_process_1.exec)(command, (err, stdout, stderr) => {
             if (err) {
+                console.error(err);
                 return;
             }
             console.log(`stdout: ${stdout}`);
@@ -35,7 +38,7 @@ function pgBackup() {
     }
     function uploadToAws() {
         return __awaiter(this, void 0, void 0, function* () {
-            const filename = "backup.sql";
+            const filename = "test_backup.sql";
             const fileContent = (0, fs_1.readFileSync)(filename);
             const params = {
                 Bucket: "wyrld/pg_backups",
@@ -46,6 +49,7 @@ function pgBackup() {
                 const res = yield new Promise((resolve, reject) => {
                     s3.upload(params, (err, data) => {
                         if (err) {
+                            console.error(err);
                             reject(err);
                         }
                         resolve(data.Location);
@@ -54,7 +58,7 @@ function pgBackup() {
                 return res;
             }
             catch (err) {
-                console.log(err);
+                console.error(err);
                 return err;
             }
         });

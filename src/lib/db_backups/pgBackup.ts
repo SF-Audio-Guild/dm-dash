@@ -1,3 +1,5 @@
+const dotenv = require("dotenv");
+dotenv.config();
 import { exec } from "child_process";
 import {readFileSync} from "fs";
 import {config as awsConfig, S3} from "aws-sdk";
@@ -20,6 +22,7 @@ function pgBackup() {
 
     exec(command, (err, stdout, stderr) => {
       if (err) {
+        console.error(err)
         // node couldn't execute the command
         return;
       }
@@ -43,6 +46,7 @@ function pgBackup() {
       const res = await new Promise((resolve, reject) => {
         s3.upload(params, (err: any, data: { Location: unknown; }) => {
           if (err) {
+            console.error(err)
             reject(err);
           }
           resolve(data.Location);
@@ -50,7 +54,7 @@ function pgBackup() {
       });
       return res;
     } catch (err) {
-      console.log(err);
+      console.error(err);
       return err;
     }
   }
