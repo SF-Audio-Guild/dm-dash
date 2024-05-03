@@ -26,7 +26,7 @@ aws_sdk_1.config.update({
 const s3 = new aws_sdk_1.S3();
 function pgBackup() {
     function doBackup() {
-        const command = `pg_dump --data-only --no-acl ${process.env.DATABASE_URL} > test_backup.sql`;
+        const command = `pg_dump --data-only --no-acl ${process.env.DATABASE_URL} > backup.sql`;
         (0, child_process_1.exec)(command, (err, stdout, stderr) => {
             if (err) {
                 console.error(err);
@@ -38,7 +38,7 @@ function pgBackup() {
     }
     function uploadToAws() {
         return __awaiter(this, void 0, void 0, function* () {
-            const filename = "test_backup.sql";
+            const filename = "backup.sql";
             const fileContent = (0, fs_1.readFileSync)(filename);
             const params = {
                 Bucket: "wyrld/pg_backups",
