@@ -41,9 +41,13 @@ const {
 const { pool } = require("./dist/api/dbconfig.js");
 const sanitizeHtml = require("sanitize-html");
 const { convertURLsToLinks } = require("./dist/lib/utils.js");
+const morgan = require("morgan");
 
 //Set CORS
 // app.use(cors())
+
+//Logging
+app.use(morgan("combined"));
 
 // Set view engine to EJS
 app.set("view engine", "ejs");
