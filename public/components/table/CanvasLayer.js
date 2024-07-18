@@ -221,15 +221,15 @@ export default class CanvasLayer {
         this.canvas.setCursor("crosshair");
       }
       // move active objects to other layer
-      if (e.ctrlKey && e.key == "m") {
-        // only allow gm to do this
-        if (USERID == this.tableView.user_id || IS_MANAGER_OR_OWNER) {
-          const activeObjects = this.canvas.getActiveObjects();
-          for (var object of activeObjects) {
-            this.moveObjectToOtherLayer(object);
-          }
-        } else return;
-      }
+      // if (e.ctrlKey && e.key == "m") {
+      //   // only allow gm to do this
+      //   if (USERID == this.tableView.user_id || IS_MANAGER_OR_OWNER) {
+      //     const activeObjects = this.canvas.getActiveObjects();
+      //     for (var object of activeObjects) {
+      //       this.moveObjectToOtherLayer(object);
+      //     }
+      //   } else return;
+      // }
       // duplicate
       if (e.ctrlKey && e.key == "d") {
         const activeObjects = this.canvas.getActiveObjects();
@@ -324,80 +324,122 @@ export default class CanvasLayer {
 
   addImageToTable = async (image) => {
     if (image.src) {
-      // create new object
       fabric.Image.fromURL(image.src, (newImg) => {
-        // CREATE ************************
+        // create new image
         const id = uuidv4();
         newImg.set("id", id);
         newImg.set("imageId", image.id);
         newImg.set("layer", this.currentLayer);
 
-        // HANDLE ************************
-        // add to canvas
-        if (this.currentLayer === "Map") {
-          const gridObjectIndex = this.canvas
-            .getObjects()
-            .indexOf(this.oGridGroup);
-          this.canvas.add(newImg);
-          // in center of viewport
-          this.canvas.viewportCenterObject(newImg);
-          newImg.moveTo(gridObjectIndex);
-        } else {
-          this.canvas.add(newImg);
-          // in center of viewport
-          this.canvas.viewportCenterObject(newImg);
+        // add to canvas on correct layer
+        switch (this.currentLayer) {
+          case "Map":
+            this.canvas.add(newImg);
+            // Center the new image in the viewport
+            this.canvas.viewportCenterObject(newImg);
+
+            const gridObjectIndex = this.canvas
+              .getObjects()
+              .indexOf(this.oGridGroup);
+            newImg.moveTo(gridObjectIndex);
+            break;
+
+          case "Object":
+            this.canvas.add(newImg);
+            // Center the new image in the viewport
+            this.canvas.viewportCenterObject(newImg);
+
+            // Move the new image to the highest index below the fog layer
+            const fogObjects = this.canvas
+              .getObjects()
+              .filter((obj) => obj.layer === "Fog");
+            const lowestFogIndex =
+              fogObjects.length > 0
+                ? this.canvas.getObjects().indexOf(fogObjects[0])
+                : this.canvas.getObjects().length;
+            newImg.moveTo(lowestFogIndex);
+
+            break;
+
+          case "Fog":
+            this.canvas.add(newImg);
+            // Center the new image in the viewport
+            this.canvas.viewportCenterObject(newImg);
+
+            // Move the new image to the very top (highest layer index)
+            newImg.moveTo(this.canvas.getObjects().length - 1);
+
+            break;
         }
 
-        // event listener
+        // add event listeners
         newImg.on("selected", (options) => {
           this.moveObjectUp(options.target);
         });
 
-        // EMIT ***************************
+        // emit through through socket
         socketIntegration.imageAdded(newImg);
       });
     }
   };
 
   moveObjectUp = (object) => {
-    if (object.layer === "Map") {
-      const gridObjectIndex = this.canvas.getObjects().indexOf(this.oGridGroup);
-      object.moveTo(gridObjectIndex - 1);
-    } else {
-      object.bringToFront();
+    switch (object.layer) {
+      case "Map":
+        const gridObjectIndex = this.canvas
+          .getObjects()
+          .indexOf(this.oGridGroup);
+        object.moveTo(gridObjectIndex - 1);
+        break;
+
+      case "Object":
+        const objects = this.canvas.getObjects();
+        const fogBottomIndex =
+          objects.filter((obj) => obj.layer === "Fog").length + 2;
+        object.moveTo(fogBottomIndex);
+        break;
+
+      case "Fog":
+        object.bringToFront();
+        break;
     }
+    // emit through socket
     socketIntegration.objectMoveUp(object);
   };
 
-  moveObjectToOtherLayer = (object) => {
-    if (object.layer === "Map") {
-      object.layer = "Object";
-      object.bringToFront();
-      if (this.currentLayer === "Map") {
-        object.opacity = "0.5";
-        object.selectable = false;
-        object.evented = false;
-      } else {
-        object.opacity = "1";
-        object.selectable = true;
-        object.evented = true;
-      }
-    } else if (object.layer === "Object") {
-      object.layer = "Map";
-      const gridObjectIndex = this.canvas.getObjects().indexOf(this.oGridGroup);
-      object.moveTo(gridObjectIndex);
-      if (this.currentLayer === "Map") {
-        object.opacity = "1";
-        object.selectable = true;
-        object.evented = true;
-      } else {
-        object.opacity = "1";
-        object.selectable = false;
-        object.evented = false;
-      }
-    }
+  // moveObjectToOtherLayer = (object) => {
+  //   if (object.layer === "Map") {
+  //     object.layer = "Object";
+  //     object.bringToFront();
+  //     this.updateObjectProperties(object);
+  //   } else if (object.layer === "Object") {
+  //     object.layer = "Map";
+  //     const gridObjectIndex = this.canvas.getObjects().indexOf(this.oGridGroup);
+  //     object.moveTo(gridObjectIndex);
+  //     this.updateObjectProperties(object);
+  //   } else if (object.layer === "Fog") {
+  //     // Logic to handle moving from Fog layer if necessary
+  //   }
 
-    socketIntegration.objectChangeLayer(object);
+  //   // Emit through socket
+  //   socketIntegration.objectChangeLayer(object);
+  // };
+
+  // Function to update object properties based on current layer
+  updateObjectProperties = (object) => {
+    if (object.layer === "Map") {
+      object.selectable = this.currentLayer === "Map";
+      object.evented = this.currentLayer === "Map";
+      object.opacity = this.currentLayer === "Fog" ? "0.5" : "1";
+    } else if (object.layer === "Object") {
+      object.selectable = this.currentLayer === "Object";
+      object.evented = this.currentLayer === "Object";
+      object.opacity = this.currentLayer !== "Object" ? "0.5" : "1";
+    } else if (object.layer === "Fog") {
+      object.selectable = this.currentLayer === "Fog";
+      object.evented = this.currentLayer === "Fog";
+      object.opacity = this.currentLayer !== "Fog" ? "0.5" : "1";
+    }
   };
 
   saveToDatabase = async () => {
@@ -423,47 +465,26 @@ export default class CanvasLayer {
       return null;
     }
   };
-
   renderSavedData = async () => {
     return new Promise((resolve) => {
-      // render old data
+      // Render old data
       this.canvas.loadFromJSON(this.currentTableView.data, () => {
         this.canvas.getObjects().forEach((object) => {
-          // group layer events
+          // Group layer events
           if (object.type === "group") {
             this.oGridGroup = object;
-            // handle if grid is snapping based on visibility
+            // Handle if grid is snapping based on visibility
             if (!this.oGridGroup.visible) this.snapToGrid = false;
             object.selectable = false;
             object.evented = false;
             return;
           }
-          // set event listeners
+          // Set event listeners
           object.on("selected", (options) => {
             this.moveObjectUp(options.target);
           });
-          // handle layer events
-          if (this.currentLayer === "Map") {
-            if (object.layer === "Object") {
-              object.opacity = "0.5";
-              object.selectable = false;
-              object.evented = false;
-            } else {
-              object.opacity = "1";
-              object.selectable = true;
-              object.evented = true;
-            }
-          } else {
-            if (object.layer === "Map") {
-              object.opacity = "1";
-              object.selectable = false;
-              object.evented = false;
-            } else {
-              object.opacity = "1";
-              object.selectable = true;
-              object.evented = true;
-            }
-          }
+          // Handle layer events using updateObjectProperties
+          this.updateObjectProperties(object);
         });
         this.canvas.renderAll();
         resolve();
