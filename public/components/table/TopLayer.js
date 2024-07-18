@@ -16,58 +16,70 @@ export default class TopLayer {
   }
 
   handleChangeCanvasLayer = () => {
-    if (this.canvasLayer.currentLayer === "Map") {
-      this.canvasLayer.currentLayer = "Object";
-      this.canvasLayer.canvas.getObjects().forEach((object, index) => {
-        if (object.layer === "Map") {
-          object.selectable = false;
-          object.evented = false;
-        }
-        if (object.layer === "Object") {
-          object.selectable = true;
-          object.evented = true;
-          object.opacity = "1";
-        }
-        this.canvasLayer.canvas.renderAll();
-      });
-    } else {
-      this.canvasLayer.currentLayer = "Map";
-      this.canvasLayer.canvas.getObjects().forEach((object, index) => {
-        if (object.layer === "Map") {
-          object.selectable = true;
-          object.evented = true;
-        }
-        if (object.layer === "Object") {
-          object.selectable = false;
-          object.evented = false;
-          object.opacity = "0.5";
-        }
-        this.canvasLayer.canvas.renderAll();
-      });
+    switch (this.canvasLayer.currentLayer) {
+      case "Map":
+        this.canvasLayer.currentLayer = "Object";
+        break;
+      case "Object":
+        this.canvasLayer.currentLayer = "Fog";
+        break;
+      case "Fog":
+        this.canvasLayer.currentLayer = "Map";
+        break;
     }
+
+    this.canvasLayer.canvas.getObjects().forEach((object, index) => {
+      if (object.layer === "Map") {
+        object.selectable = this.canvasLayer.currentLayer === "Map";
+        object.evented = this.canvasLayer.currentLayer === "Map";
+        object.opacity = this.canvasLayer.currentLayer === "Fog" ? "0.5" : "1";
+      } else if (object.layer === "Object") {
+        object.selectable = this.canvasLayer.currentLayer === "Object";
+        object.evented = this.canvasLayer.currentLayer === "Object";
+        object.opacity =
+          this.canvasLayer.currentLayer !== "Object" ? "0.5" : "1";
+      } else if (object.layer === "Fog") {
+        object.selectable = this.canvasLayer.currentLayer === "Fog";
+        object.evented = this.canvasLayer.currentLayer === "Fog";
+        object.opacity = this.canvasLayer.currentLayer !== "Fog" ? "0.5" : "1";
+      }
+    });
+
+    this.canvasLayer.canvas.renderAll();
     this.render();
   };
 
   renderStyledLayerInfoComponent = () => {
-    if (this.canvasLayer.currentLayer === "Map") {
-      return createElement("div", { style: "display: flex;" }, [
-        createElement(
+    let layerInfo;
+
+    switch (this.canvasLayer.currentLayer) {
+      case "Map":
+        layerInfo = createElement(
           "small",
-          { style: "margin-right: 3px;" },
-          "Current Layer:"
-        ),
-        createElement("small", { style: "color: var(--orange2)" }, "Map"),
-      ]);
-    } else {
-      return createElement("div", { style: "display: flex;" }, [
-        createElement(
+          { style: "color: var(--orange2)" },
+          "Map"
+        );
+        break;
+      case "Object":
+        layerInfo = createElement(
           "small",
-          { style: "margin-right: 3px;" },
-          "Current Layer:"
-        ),
-        createElement("small", { style: "color: var(--green)" }, "Object"),
-      ]);
+          { style: "color: var(--green)" },
+          "Object"
+        );
+        break;
+      case "Fog":
+        layerInfo = createElement(
+          "small",
+          { style: "color: var(--blue)" },
+          "Fog"
+        );
+        break;
     }
+
+    return createElement("div", { style: "display: flex; width: 150px" }, [
+      createElement("small", { style: "margin-right: 3px;" }, "Current Layer:"),
+      layerInfo,
+    ]);
   };
 
   renderLayersElem = () => {
@@ -255,14 +267,14 @@ export default class TopLayer {
                 "While object(s) are selected, press delete key to remove object(s) from table."
               ),
               createElement("br"),
-              createElement("b", {}, "Control (⌃) + m"),
-              createElement("br"),
-              createElement(
-                "small",
-                {},
-                "*GM only* While object(s) are selected, pressing ctrl + m will change the layer that the object(s) are currently on."
-              ),
-              createElement("br"),
+              // createElement("b", {}, "Control (⌃) + m"),
+              // createElement("br"),
+              // createElement(
+              //   "small",
+              //   {},
+              //   "*GM only* While object(s) are selected, pressing ctrl + m will change the layer that the object(s) are currently on."
+              // ),
+              // createElement("br"),
               createElement("b", {}, "Control (⌃) + d"),
               createElement("br"),
               createElement(
