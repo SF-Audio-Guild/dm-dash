@@ -206,10 +206,46 @@ export default class CanvasLayer {
       opt.path.set("id", id);
       opt.path.set("layer", this.currentLayer);
 
+      // Remove initial drawing created by canvas
+      this.canvas.remove(opt.path);
+
+      // Add the path to the canvas on the correct layer
+      switch (this.currentLayer) {
+        case "Map":
+          this.canvas.add(opt.path);
+          // Move the path to the correct z-index (below the grid)
+          const gridObjectIndex = this.canvas
+            .getObjects()
+            .indexOf(this.oGridGroup);
+          opt.path.moveTo(gridObjectIndex);
+          break;
+
+        case "Object":
+          this.canvas.add(opt.path);
+          // Move the path to the highest index below the fog layer
+          const fogObjects = this.canvas
+            .getObjects()
+            .filter((obj) => obj.layer === "Fog");
+          const lowestFogIndex =
+            fogObjects.length > 0
+              ? this.canvas.getObjects().indexOf(fogObjects[0])
+              : this.canvas.getObjects().length;
+          opt.path.moveTo(lowestFogIndex);
+          break;
+
+        case "Fog":
+          this.canvas.add(opt.path);
+          // Move the path to the very top (highest layer index)
+          opt.path.moveTo(this.canvas.getObjects().length - 1);
+          break;
+      }
+
+      // Add event listeners
       opt.path.on("selected", (options) => {
         this.moveObjectUp(options.target);
       });
 
+      // Emit through the socket
       socketIntegration.imageAdded(opt.path);
     });
 
@@ -238,6 +274,7 @@ export default class CanvasLayer {
             // new id
             const id = uuidv4();
             clone.set("id", id);
+            clone.set("layer", object.layer);
             // place close to original
             if (object.group) {
               let absoluteLeft =
@@ -384,6 +421,8 @@ export default class CanvasLayer {
   };
 
   moveObjectUp = (object) => {
+    // Do nothing for now... broken
+    return;
     switch (object.layer) {
       case "Map":
         const gridObjectIndex = this.canvas
