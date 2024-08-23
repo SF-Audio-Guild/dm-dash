@@ -275,7 +275,8 @@ export default class CanvasLayer {
             const id = uuidv4();
             clone.set("id", id);
             clone.set("layer", object.layer);
-            // place close to original
+
+            // place close to the original
             if (object.group) {
               let absoluteLeft =
                 object.left + object.group.left + object.group.width / 2;
@@ -287,8 +288,38 @@ export default class CanvasLayer {
               clone.set("left", object.left + 50);
               clone.set("top", object.top + 50);
             }
-            // add to canvas
-            this.canvas.add(clone);
+
+            // add to canvas on correct layer
+            switch (object.layer) {
+              case "Map":
+                this.canvas.add(clone);
+                // Move the clone to the correct z-index (below the grid)
+                const gridObjectIndex = this.canvas
+                  .getObjects()
+                  .indexOf(this.oGridGroup);
+                clone.moveTo(gridObjectIndex);
+                break;
+
+              case "Object":
+                this.canvas.add(clone);
+                // Move the clone to the highest index below the fog layer
+                const fogObjects = this.canvas
+                  .getObjects()
+                  .filter((obj) => obj.layer === "Fog");
+                const lowestFogIndex =
+                  fogObjects.length > 0
+                    ? this.canvas.getObjects().indexOf(fogObjects[0])
+                    : this.canvas.getObjects().length;
+                clone.moveTo(lowestFogIndex);
+                break;
+
+              case "Fog":
+                this.canvas.add(clone);
+                // Move the clone to the very top (highest layer index)
+                clone.moveTo(this.canvas.getObjects().length - 1);
+                break;
+            }
+
             // send to socket
             socketIntegration.imageAdded(clone);
           });
