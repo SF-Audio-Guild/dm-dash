@@ -232,6 +232,48 @@ export default class TopLayer {
     } else return createElement("div", { style: "display: none;" });
   };
 
+  renderCanvasObjectList = (canvasObjectList) => {
+    return canvasObjectList.map((obj, index) => {
+      console.log(obj);
+      if (!obj.id) {
+        return createElement("div", { style: "display: none;" });
+      }
+      return createElement("div", {}, [
+        createElement(
+          "div",
+          { class: "canvas-log-item" },
+          JSON.stringify(obj.id),
+          [
+            {
+              type: "mouseenter",
+              event: () => {
+                obj.set({
+                  shadow: {
+                    color: "yellow",
+                    blur: 30,
+                    offsetX: 0,
+                    offsetY: 0,
+                  },
+                });
+                this.canvasLayer.canvas.renderAll();
+              },
+            },
+            {
+              type: "mouseleave",
+              event: () => {
+                obj.set({
+                  shadow: null,
+                });
+                this.canvasLayer.canvas.renderAll();
+              },
+            },
+          ]
+        ),
+        createElement("br"),
+      ]);
+    });
+  };
+
   renderInfoMenu = () => {
     return createElement(
       "div",
@@ -283,6 +325,24 @@ export default class TopLayer {
                 "While object(s) are selected, pressing ctrl + d will duplicate the object(s) and place them on the table close to the original."
               ),
               createElement("br"),
+              createElement("b", {}, "Canvas Log"),
+              createElement("br"),
+              createElement("button", {}, "Open Log", {
+                type: "click",
+                event: (e) => {
+                  const canvasObjectsList =
+                    this.canvasLayer.canvas.getObjects();
+                  modal.show(
+                    createElement("div", { class: "help-content" }, [
+                      createElement("h1", {}, "Canvas Log"),
+                      createElement("hr"),
+                      createElement("h2", {}, "Objects List"),
+                      createElement("hr"),
+                      ...this.renderCanvasObjectList(canvasObjectsList),
+                    ])
+                  );
+                },
+              }),
             ])
           );
         },
