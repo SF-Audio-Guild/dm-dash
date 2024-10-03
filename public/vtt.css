@@ -68,6 +68,15 @@
   display: block;
 }
 
+.canvas-log-item {
+  padding: 5px;
+  color: var(--link-blue);
+}
+
+.canvas-log-item:hover {
+  outline: 1px solid var(--main-white)
+}
+
 .table-sidebar-image-component {
   display: flex;
   flex-direction: column;
